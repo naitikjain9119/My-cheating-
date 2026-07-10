@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chat Application</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --text-color: #1c1e21;
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+            --accent-color: #0084ff;
+            --msg-sent: #0084ff;
+            --msg-sent-text: #ffffff;
+            --msg-recv: rgba(255,255,255,0.9);
+            --danger: #ff4d4d;
+            --success: #00c851;
+            --nav-bg: rgba(255, 255, 255, 0.85);
+        }
+        
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --text-color: #ffffff;
+            --glass-bg: rgba(30, 30, 30, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            --msg-recv: rgba(50, 50, 50, 0.9);
+            --nav-bg: rgba(20, 20, 20, 0.85);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { background: var(--bg-color); color: var(--text-color); transition: all 0.3s ease; overflow-x: hidden; }
+        
+        /* Glassmorphism Utilities */
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--glass-shadow);
+            border-radius: 16px;
+        }
+
+        .screen { display: none; min-height: 100vh; padding-bottom: 70px; animation: fadeIn 0.4s ease; }
+        .screen.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Form Styles */
+        .auth-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .auth-card { width: 100%; max-width: 400px; padding: 30px; text-align: center; }
+        .auth-card h2 { margin-bottom: 20px; font-weight: 600; }
+        .input-group { position: relative; margin-bottom: 15px; text-align: left; }
+        .input-group input, .input-group textarea {
+            width: 100%; padding: 12px 15px; border-radius: 12px; border: 1px solid var(--glass-border);
+            background: rgba(255,255,255,0.1); color: var(--text-color); outline: none; transition: 0.3s;
+        }
+        .input-group input:focus { border-color: var(--accent-color); }
+        .input-group i.eye-btn { position: absolute; right: 15px; top: 15px; cursor: pointer; color: #888; }
+        
+        .btn { width: 100%; padding: 12px; border-radius: 12px; border: none; background: var(--accent-color); color: #fff; font-weight: 600; cursor: pointer; transition: 0.3s; position: relative; overflow: hidden; }
+        .btn:active { transform: scale(0.98); }
+        .btn-text { background: transparent; color: var(--accent-color); padding: 5px; margin-top: 10px; cursor: pointer; }
+        
+        /* Main App Header */
+        .header { position: sticky; top: 0; z-index: 100; padding: 15px; text-align: center; font-weight: 500; font-size: 14px; border-radius: 0 0 16px 16px; }
+        .badge { position: absolute; top: 10px; right: 15px; background: var(--danger); color: white; border-radius: 50%; padding: 2px 6px; font-size: 12px; cursor: pointer; display: none; }
+
+        /* Bottom Nav */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; display: flex; justify-content: space-around; padding: 10px 0; background: var(--nav-bg); backdrop-filter: blur(10px); z-index: 100; border-top: 1px solid var(--glass-border); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #888; cursor: pointer; font-size: 12px; transition: 0.3s; }
+        .nav-item.active { color: var(--accent-color); }
+        .nav-item i { font-size: 20px; margin-bottom: 4px; }
+
+        /* Lists & Cards */
+        .list-container { padding: 15px; }
+        .user-card { display: flex; align-items: center; padding: 12px; margin-bottom: 10px; cursor: pointer; transition: 0.2s; position: relative; }
+        .user-card:active { transform: scale(0.98); }
+        .avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--accent-color); color: #fff; display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 20px; margin-right: 15px; }
+        .user-info { flex: 1; }
+        .user-name { font-weight: 600; font-size: 16px; }
+        .user-bio { font-size: 12px; color: #888; }
+        .btn-small { padding: 8px 12px; border-radius: 8px; border: none; background: var(--accent-color); color: #fff; cursor: pointer; font-size: 12px; margin-left: 5px; }
+        .btn-reject { background: var(--danger); }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; position: absolute; left: 45px; bottom: 10px; border: 2px solid var(--bg-color); }
+        .online { background: var(--success); }
+        .offline { background: #888; }
+
+        /* Chat Screen */
+        .chat-header { display: flex; align-items: center; padding: 10px 15px; position: sticky; top: 0; z-index: 10; border-radius: 0 0 16px 16px; }
+        .back-btn { font-size: 20px; margin-right: 15px; cursor: pointer; }
+        .chat-header .user-name { font-size: 18px; }
+        .chat-header .user-bio { font-size: 12px; color: var(--accent-color); }
+        .call-btns { margin-left: auto; display: flex; gap: 15px; font-size: 20px; cursor: pointer; color: var(--accent-color); }
+        
+        .chat-area { padding: 15px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; height: calc(100vh - 140px); }
+        .message { max-width: 75%; padding: 10px 15px; border-radius: 16px; font-size: 14px; position: relative; word-wrap: break-word; animation: fadeIn 0.2s; user-select: none; }
+        .msg-sent { align-self: flex-end; background: var(--msg-sent); color: var(--msg-sent-text); border-bottom-right-radius: 4px; }
+        .msg-recv { align-self: flex-start; background: var(--msg-recv); border-bottom-left-radius: 4px; border: 1px solid var(--glass-border); color: var(--text-color); }
+        .msg-meta { font-size: 10px; margin-top: 5px; display: flex; justify-content: flex-end; gap: 5px; opacity: 0.8; }
+        
+        .chat-input-area { position: fixed; bottom: 0; left: 0; width: 100%; padding: 10px; display: flex; align-items: center; gap: 10px; background: var(--nav-bg); backdrop-filter: blur(10px); z-index: 10; }
+        .chat-input { flex: 1; padding: 12px 15px; border-radius: 20px; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--text-color); outline: none; }
+        .send-btn, .emoji-btn { width: 45px; height: 45px; border-radius: 50%; border: none; background: var(--accent-color); color: white; display: flex; justify-content: center; align-items: center; font-size: 18px; cursor: pointer; }
+        .emoji-btn { background: transparent; color: var(--text-color); border: 1px solid var(--glass-border); }
+
+        /* Emoji Picker */
+        .emoji-picker { display: none; position: absolute; bottom: 70px; left: 10px; width: calc(100% - 20px); height: 200px; background: var(--glass-bg); backdrop-filter: blur(15px); border-radius: 16px; border: 1px solid var(--glass-border); padding: 10px; overflow-y: auto; grid-template-columns: repeat(8, 1fr); gap: 5px; z-index: 20; }
+        .emoji-item { font-size: 24px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .emoji-item:hover { transform: scale(1.2); }
+
+        /* Popup Menu */
+        .popup-menu, .overlay { display: none; position: fixed; z-index: 1000; }
+        .overlay { top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(3px); }
+        .popup-menu { top: 50%; left: 50%; transform: translate(-50%, -50%); width: 250px; background: var(--bg-color); border-radius: 16px; overflow: hidden; }
+        .popup-item { padding: 15px; text-align: center; border-bottom: 1px solid var(--glass-border); cursor: pointer; }
+        .popup-item:last-child { border-bottom: none; }
+        .popup-item:active { background: rgba(0,0,0,0.1); }
+        .popup-item.danger { color: var(--danger); }
+
+        /* Call Screen */
+        .call-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #111; z-index: 2000; display: none; flex-direction: column; color: white; }
+        .video-container { flex: 1; position: relative; background: #000; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        .local-video { position: absolute; bottom: 20px; right: 20px; width: 100px; height: 150px; border-radius: 12px; border: 2px solid white; object-fit: cover; z-index: 10; }
+        .call-info { position: absolute; top: 40px; left: 0; width: 100%; text-align: center; z-index: 10; }
+        .call-info h2 { font-size: 24px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .call-controls { display: flex; justify-content: center; gap: 20px; padding: 30px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); position: absolute; bottom: 0; width: 100%; z-index: 10; }
+        .call-btn { width: 60px; height: 60px; border-radius: 50%; border: none; font-size: 24px; display: flex; justify-content: center; align-items: center; cursor: pointer; color: white; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); }
+        .call-btn.end { background: var(--danger); }
+        .call-btn.accept { background: var(--success); }
+        .call-btn.off { background: rgba(255,0,0,0.5); }
+
+        /* Settings specific */
+        .color-picker { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        .color-circle { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+        .history-item { font-size: 12px; border-bottom: 1px solid var(--glass-border); padding: 10px 0; }
+        
+        /* Toast */
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--glass-bg); backdrop-filter: blur(10px); padding: 10px 20px; border-radius: 20px; z-index: 3000; display: none; border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <div id="toast" class="toast"></div>
+
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="screen active">
+        <div class="auth-container">
+            <div class="glass auth-card" id="login-card">
+                <h2>Login</h2>
+                <div class="input-group">
+                    <input type="email" id="log-email" placeholder="Email">
+                </div>
+                <div class="input-group">
+                    <input type="password" id="log-pass" placeholder="Password">
+                    <i class="fas fa-eye eye-btn" onclick="toggleEye('log-pass')"></i>
+                </div>
+                <button class="btn" onclick="login()">Login</button>
+                <button class="btn-text" onclick="forgotPassword()">Forgot Password?</button>
+                <button class="btn-text" onclick="toggleAuth()">Create Account</button>
+            </div>
+
+            <div class="glass auth-card" id="reg-card" style="display: none;">
+                <h2>Register</h2>
+                <div class="input-group">
+                    <input type="text" id="reg-name" placeholder="Full Name">
+                </div>
+                <div class="input-group">
+                    <input type="email" id="reg-email" placeholder="Email">
+                </div>
+                <div class="input-group">
+                    <input type="password" id="reg-pass" placeholder="Password">
+                    <i class="fas fa-eye eye-btn" onclick="toggleEye('reg-pass')"></i>
+                </div>
+                <div class="input-group">
+                    <textarea id="reg-bio" placeholder="Short Bio" rows="2"></textarea>
+                </div>
+                <button class="btn" onclick="register()">Sign Up</button>
+                <button class="btn-text" onclick="toggleAuth()">Back to Login</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="main-screen" class="screen">
+        <div class="glass header">
+            This Website is Made by Naitik Jain
+            <div id="home-badge" class="badge" onclick="openChatFromBadge()"></div>
+        </div>
+
+        <!-- Home Tab -->
+        <div id="tab-home" class="list-container">
+            <div id="friends-list"></div>
+        </div>
+
+        <!-- Search Tab -->
+        <div id="tab-search" class="list-container" style="display: none;">
+            <div class="input-group">
+                <input type="text" id="search-input" placeholder="Search users by name..." onkeyup="searchUsers()">
+            </div>
+            <div id="search-results"></div>
+        </div>
+
+        <!-- Notifications Tab -->
+        <div id="tab-notify" class="list-container" style="display: none;">
+            <h3 style="margin-bottom: 10px;">Friend Requests</h3>
+            <div id="requests-list"></div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="tab-settings" class="list-container" style="display: none;">
+            <div class="glass user-card" style="flex-direction: column; text-align: center; padding: 20px;">
+                <div class="avatar" id="set-avatar" style="width: 80px; height: 80px; font-size: 30px; margin: 0 auto 10px;"></div>
+                <h3 id="set-name-disp"></h3>
+                <p id="set-bio-disp" style="font-size: 12px; color: #888; margin-bottom: 15px;"></p>
+                
+                <div class="input-group"><input type="text" id="set-name" placeholder="Name"></div>
+                <div class="input-group"><input type="text" id="set-bio" placeholder="Bio"></div>
+                <div class="input-group"><input type="password" id="set-pass" placeholder="New Password"></div>
+                <button class="btn" onclick="updateProfile()">Save Changes</button>
+            </div>
+
+            <div class="glass user-card" style="flex-direction: column; align-items: flex-start; margin-top: 15px;">
+                <h4>Theme</h4>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button class="btn-small" onclick="setTheme('light')">Light</button>
+                    <button class="btn-small" onclick="setTheme('dark')">Dark</button>
+                </div>
+                <h4 style="margin-top: 15px;">Accent Color</h4>
+                <div class="color-picker">
+                    <div class="color-circle" style="background:#0084ff" onclick="setAccent('#0084ff')"></div>
+                    <div class="color-circle" style="background:#ff3366" onclick="setAccent('#ff3366')"></div>
+                    <div class="color-circle" style="background:#00c851" onclick="setAccent('#00c851')"></div>
+                    <div class="color-circle" style="background:#ffbb33" onclick="setAccent('#ffbb33')"></div>
+                    <input type="color" id="custom-color" style="width: 30px; height: 30px; border:none; border-radius:50%; cursor:pointer;" onchange="setAccent(this.value)">
+                </div>
+            </div>
+
+            <div class="glass user-card" style="flex-direction: column; align-items: flex-start; margin-top: 15px;">
+                <div style="display:flex; justify-content:space-between; width:100%;">
+                    <h4>Call History</h4>
+                    <button class="btn-small btn-reject" onclick="clearHistory()">Clear</button>
+                </div>
+                <div id="call-history-list" style="width: 100%; margin-top: 10px; max-height: 150px; overflow-y: auto;"></div>
+            </div>
+
+            <button class="btn" style="margin-top: 15px; background: var(--danger);" onclick="logout()">Logout</button>
+        </div>
+
+        <!-- Bottom Nav -->
+        <div class="bottom-nav">
+            <div class="nav-item active" onclick="switchTab('home', this)"><i class="fas fa-home"></i>Home</div>
+            <div class="nav-item" onclick="switchTab('search', this)"><i class="fas fa-search"></i>Search</div>
+            <div class="nav-item" onclick="switchTab('notify', this)">
+                <i class="fas fa-bell"></i>Notifications
+                <span id="nav-badge" class="badge" style="top: -5px; right: 10px;"></span>
+            </div>
+            <div class="nav-item" onclick="switchTab('settings', this)"><i class="fas fa-cog"></i>Settings</div>
+        </div>
+    </div>
+
+    <!-- Chat Screen -->
+    <div id="chat-screen" class="screen" style="padding-bottom: 0;">
+        <div class="glass chat-header">
+            <i class="fas fa-arrow-left back-btn" onclick="closeChat()"></i>
+            <div class="avatar" id="chat-avatar" style="width: 40px; height: 40px; font-size: 16px;"></div>
+            <div>
+                <div class="user-name" id="chat-name"></div>
+                <div class="user-bio" id="chat-status"></div>
+            </div>
+            <div class="call-btns">
+                <i class="fas fa-phone" onclick="startCall('voice')"></i>
+                <i class="fas fa-video" onclick="startCall('video')"></i>
+            </div>
+        </div>
+        
+        <div class="chat-area" id="chat-area"></div>
+        
+        <div class="emoji-picker glass" id="emoji-picker"></div>
+
+        <div class="chat-input-area">
+            <button class="emoji-btn" onclick="toggleEmoji()"><i class="fas fa-smile"></i></button>
+            <input type="text" class="chat-input" id="msg-input" placeholder="Message..." oninput="handleTyping()" onkeypress="if(event.key==='Enter') sendMessage()">
+            <button class="send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <!-- Long Press Popup Menu -->
+    <div class="overlay" id="overlay" onclick="closeMenu()"></div>
+    <div class="glass popup-menu" id="msg-menu">
+        <div class="popup-item" onclick="actionCopy()"><i class="fas fa-copy"></i> Copy</div>
+        <div class="popup-item" onclick="actionEdit()"><i class="fas fa-pen"></i> Edit</div>
+        <div class="popup-item" id="menu-read-time" style="font-size: 12px; color: #888;"></div>
+        <div class="popup-item danger" onclick="actionDelete()"><i class="fas fa-trash"></i> Delete</div>
+    </div>
+
+    <!-- Call Screen -->
+    <div class="call-screen" id="call-screen">
+        <div class="call-info" id="call-info">
+            <h2 id="call-user-name">Incoming Call...</h2>
+            <p id="call-timer">00:00</p>
+        </div>
+        <div class="video-container" id="video-container" style="display: none;">
+            <video id="remote-video" autoplay playsinline></video>
+            <video id="local-video" class="local-video" autoplay playsinline muted></video>
+        </div>
+        <div class="call-controls" id="incoming-controls" style="display: none;">
+            <button class="call-btn end" onclick="declineCall()"><i class="fas fa-phone-slash"></i></button>
+            <button class="call-btn accept" onclick="acceptCall()"><i class="fas fa-phone"></i></button>
+        </div>
+        <div class="call-controls" id="active-controls" style="display: none;">
+            <button class="call-btn" id="btn-mic" onclick="toggleMic()"><i class="fas fa-microphone"></i></button>
+            <button class="call-btn" id="btn-cam" onclick="toggleCam()" style="display:none;"><i class="fas fa-video"></i></button>
+            <button class="call-btn end" onclick="endCall()"><i class="fas fa-phone-slash"></i></button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getDatabase, ref, set, onValue, push, update, remove, onDisconnect, serverTimestamp, get, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDYmXP7k9GRIu0KICl7-z7AjyMptgH1n4s",
+            authDomain: "cheating-app-f3269.firebaseapp.com",
+            databaseURL: "https://cheating-app-f3269-default-rtdb.firebaseio.com",
+            projectId: "cheating-app-f3269",
+            storageBucket: "cheating-app-f3269.firebasestorage.app",
+            messagingSenderId: "972918419121",
+            appId: "1:972918419121:web:d339f4ea0d27651b49fc90"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        // Global State
+        let currentUser = null;
+        let activeChatId = null;
+        let activeFriendId = null;
+        let activeFriendData = null;
+        let typingTimeout = null;
+        let usersData = {};
+        let unreadSender = null;
+        let editMsgId = null;
+        let longPressTimer;
+        let targetMsgNode = null;
+        let targetMsgData = null;
+
+        // WebRTC Global
+        let localStream;
+        let peerConnection;
+        let callType = 'voice';
+        let callInterval;
+        let callSeconds = 0;
+        let activeCallRef = null;
+        let inCall = false;
+        
+        const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
+
+        // Utils
+        const $ = (id) => document.getElementById(id);
+        window.toggleEye = (id) => { const el = $(id); el.type = el.type === 'password' ? 'text' : 'password'; };
+        window.toggleAuth = () => {
+            const login = $('login-card').style.display;
+            $('login-card').style.display = login === 'none' ? 'block' : 'none';
+            $('reg-card').style.display = login === 'none' ? 'none' : 'block';
+        };
+        const showToast = (msg) => {
+            const t = $('toast'); t.innerText = msg; t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 3000);
+        };
+        const formatTime = (ts) => {
+            if(!ts) return '';
+            const d = new Date(ts);
+            return d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        };
+        const formatDate = (ts) => {
+            if(!ts) return '';
+            const d = new Date(ts);
+            return d.toLocaleDateString() + ' ' + formatTime(ts);
+        };
+        const getInitials = (name) => name ? name.charAt(0).toUpperCase() : '?';
+
+        // Audio Context Ringtone
+        let audioCtx, osc, ringtoneInterval;
+        const playRingtone = () => {
+            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            ringtoneInterval = setInterval(() => {
+                osc = audioCtx.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                osc.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+            }, 400);
+        };
+        const stopRingtone = () => { clearInterval(ringtoneInterval); };
+
+        // Theming
+        window.setTheme = (theme) => {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+        };
+        window.setAccent = (color) => {
+            document.documentElement.style.setProperty('--accent-color', color);
+            localStorage.setItem('accent', color);
+        };
+        const loadTheme = () => {
+            const t = localStorage.getItem('theme') || 'light';
+            const a = localStorage.getItem('accent') || '#0084ff';
+            setTheme(t); setAccent(a);
+        };
+        loadTheme();
+
+        // Populate Emojis
+        const emojis = ["😀","😁","😂","🤣","😊","😍","😘","🥰","😜","😎","🤩","😢","😭","😡","🤬","🤯","😱","🥶","🤢","🤮","🥳","👽","👻","💩","👍","👎","👏","🤝","❤️","🔥","✨","🌟"];
+        const picker = $('emoji-picker');
+        emojis.forEach(e => {
+            let div = document.createElement('div');
+            div.className = 'emoji-item'; div.innerText = e;
+            div.onclick = () => { $('msg-input').value += e; toggleEmoji(); };
+            picker.appendChild(div);
+        });
+        window.toggleEmoji = () => { picker.style.display = picker.style.display === 'grid' ? 'none' : 'grid'; };
+
+        // Auth Logic
+        window.register = async () => {
+            const name = $('reg-name').value, email = $('reg-email').value, pass = $('reg-pass').value, bio = $('reg-bio').value;
+            if(!name || !email || !pass) return showToast("Fill all fields");
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, email, pass);
+                await set(ref(db, `users/${cred.user.uid}`), { name, email, bio, status: 'online', lastSeen: serverTimestamp() });
+            } catch(e) { showToast(e.message); }
+        };
+
+        window.login = async () => {
+            const email = $('log-email').value, pass = $('log-pass').value;
+            if(!email || !pass) return showToast("Fill all fields");
+            try { await signInWithEmailAndPassword(auth, email, pass); } catch(e) { showToast(e.message); }
+        };
+
+        window.forgotPassword = async () => {
+            const email = $('log-email').value;
+            if(!email) return showToast("Enter email to reset password");
+            try { await sendPasswordResetEmail(auth, email); showToast("Reset link sent"); } catch(e) { showToast(e.message); }
+        };
+
+        window.logout = () => { signOut(auth); };
+
+        onAuthStateChanged(auth, user => {
+            if(user) {
+                currentUser = user;
+                $('auth-screen').classList.remove('active');
+                $('main-screen').classList.add('active');
+                initUser();
+            } else {
+                currentUser = null;
+                $('main-screen').classList.remove('active');
+                $('chat-screen').classList.remove('active');
+                $('auth-screen').classList.add('active');
+            }
+        });
+
+        const initUser = () => {
+            const userRef = ref(db, `users/${currentUser.uid}`);
+            const statusRef = ref(db, `users/${currentUser.uid}/status`);
+            const lastSeenRef = ref(db, `users/${currentUser.uid}/lastSeen`);
+
+            update(userRef, { status: 'online' });
+            onDisconnect(statusRef).set('offline');
+            onDisconnect(lastSeenRef).set(serverTimestamp());
+
+            onValue(userRef, snap => {
+                if(snap.exists()) {
+                    const data = snap.val();
+                    $('set-name').value = data.name; $('set-bio').value = data.bio;
+                    $('set-name-disp').innerText = data.name; $('set-bio-disp').innerText = data.bio;
+                    $('set-avatar').innerText = getInitials(data.name);
+                }
+            });
+
+            // Listen to all users for Search & Meta
+            onValue(ref(db, 'users'), snap => { if(snap.exists()) usersData = snap.val(); loadFriends(); });
+            
+            listenRequests();
+            listenCalls();
+            listenHistory();
+            listenGlobalUnread();
+        };
+
+        // Navigation
+        window.switchTab = (tab, el) => {
+            document.querySelectorAll('.list-container').forEach(c => c.style.display = 'none');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            $(`tab-${tab}`).style.display = 'block';
+            el.classList.add('active');
+            if(tab === 'search') $('search-input').focus();
+        };
+
+        window.updateProfile = async () => {
+            const name = $('set-name').value, bio = $('set-bio').value, pass = $('set-pass').value;
+            try {
+                await update(ref(db, `users/${currentUser.uid}`), { name, bio });
+                if(pass) await updatePassword(currentUser, pass);
+                showToast("Profile Updated");
+            } catch(e) { showToast(e.message); }
+        };
+
+        // Search & Friends
+        window.searchUsers = () => {
+            const q = $('search-input').value.toLowerCase();
+            const res = $('search-results'); res.innerHTML = '';
+            if(!q) return;
+            for(let uid in usersData) {
+                if(uid === currentUser.uid) continue;
+                const u = usersData[uid];
+                if(u.name.toLowerCase().includes(q)) {
+                    res.innerHTML += `
+                        <div class="glass user-card">
+                            <div class="avatar">${getInitials(u.name)}</div>
+                            <div class="user-info">
+                                <div class="user-name">${u.name}</div>
+                                <div class="user-bio">${u.bio}</div>
+                            </div>
+                            <button class="btn-small" onclick="addFriend('${uid}')">Add Friend</button>
+                        </div>`;
+                }
+            }
+        };
+
+        window.addFriend = async (uid) => {
+            await set(ref(db, `friend_requests/${uid}/${currentUser.uid}`), { timestamp: serverTimestamp() });
+            showToast("Request Sent");
+        };
+
+        const listenRequests = () => {
+            onValue(ref(db, `friend_requests/${currentUser.uid}`), snap => {
+                const list = $('requests-list'); list.innerHTML = '';
+                let count = 0;
+                if(snap.exists()) {
+                    snap.forEach(child => {
+                        const uid = child.key; const u = usersData[uid];
+                        if(u) {
+                            count++;
+                            list.innerHTML += `
+                                <div class="glass user-card">
+                                    <div class="avatar">${getInitials(u.name)}</div>
+                                    <div class="user-info">
+                                        <div class="user-name">${u.name}</div>
+                                        <div class="user-bio">${u.bio}</div>
+                                    </div>
+                                    <button class="btn-small" onclick="acceptReq('${uid}')">Accept</button>
+                                    <button class="btn-small btn-reject" onclick="rejectReq('${uid}')">Reject</button>
+                                </div>`;
+                        }
+                    });
+                }
+                const badge = $('nav-badge');
+                if(count>0) { badge.style.display='block'; badge.innerText = count; } else { badge.style.display='none'; }
+            });
+        };
+
+        window.acceptReq = async (uid) => {
+            await set(ref(db, `friends/${currentUser.uid}/${uid}`), true);
+            await set(ref(db, `friends/${uid}/${currentUser.uid}`), true);
+            await remove(ref(db, `friend_requests/${currentUser.uid}/${uid}`));
+            showToast("Friend Added");
+        };
+        window.rejectReq = async (uid) => { await remove(ref(db, `friend_requests/${currentUser.uid}/${uid}`)); };
+
+        const loadFriends = () => {
+            onValue(ref(db, `friends/${currentUser.uid}`), snap => {
+                const list = $('friends-list'); list.innerHTML = '';
+                if(snap.exists()) {
+                    snap.forEach(child => {
+                        const uid = child.key; const u = usersData[uid];
+                        if(u) {
+                            const statusCls = u.status === 'online' ? 'online' : 'offline';
+                            list.innerHTML += `
+                                <div class="glass user-card" onclick="openChat('${uid}')">
+                                    <div style="position:relative">
+                                        <div class="avatar">${getInitials(u.name)}</div>
+                                        <div class="status-dot ${statusCls}"></div>
+                                    </div>
+                                    <div class="user-info">
+                                        <div class="user-name">${u.name}</div>
+                                        <div class="user-bio">${u.bio}</div>
+                                    </div>
+                                </div>`;
+                        }
+                    });
+                } else { list.innerHTML = "<p style='text-align:center;color:#888;'>No friends yet. Search and add some!</p>"; }
+            });
+        };
+
+        // Chat System
+        const getChatId = (uid1, uid2) => uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`;
+
+        window.openChatFromBadge = () => { if(unreadSender) openChat(unreadSender); };
+
+        window.openChat = (uid) => {
+            activeFriendId = uid;
+            activeFriendData = usersData[uid];
+            activeChatId = getChatId(currentUser.uid, uid);
+            
+            $('chat-name').innerText = activeFriendData.name;
+            $('chat-avatar').innerText = getInitials(activeFriendData.name);
+            updateChatStatus();
+            
+            $('main-screen').classList.remove('active');
+            $('chat-screen').classList.add('active');
+            
+            listenChat();
+            listenTyping();
+            
+            // Mark read on open
+            updateReadReceipt();
+        };
+
+        window.closeChat = () => {
+            $('chat-screen').classList.remove('active');
+            $('main-screen').classList.add('active');
+            activeFriendId = null; activeChatId = null;
+            $('chat-area').innerHTML = '';
+        };
+
+        const updateChatStatus = () => {
+            if(!activeFriendId) return;
+            const u = usersData[activeFriendId];
+            let stat = u.status === 'online' ? 'Online' : 'Last seen ' + formatDate(u.lastSeen);
+            
+            onValue(ref(db, `chats/${activeChatId}/typing/${activeFriendId}`), snap => {
+                if(snap.exists() && snap.val() === true) $('chat-status').innerText = 'Typing...';
+                else $('chat-status').innerText = stat;
+            });
+        };
+
+        const listenChat = () => {
+            const chatRef = ref(db, `chats/${activeChatId}/messages`);
+            onValue(chatRef, snap => {
+                const area = $('chat-area'); area.innerHTML = '';
+                if(snap.exists()) {
+                    snap.forEach(child => {
+                        const msg = child.val();
+                        const mid = child.key;
+                        if(msg.deletedFor === currentUser.uid || msg.deletedFor === 'everyone') {
+                            if(msg.deletedFor === 'everyone') {
+                                area.innerHTML += `<div class="message ${msg.sender===currentUser.uid?'msg-sent':'msg-recv'}" style="font-style:italic; opacity:0.6;">🚫 This message was deleted.</div>`;
+                            }
+                            return;
+                        }
+                        
+                        const isSent = msg.sender === currentUser.uid;
+                        const edited = msg.edited ? ' (Edited)' : '';
+                        let readStat = '';
+                        if(isSent && msg.readBy) readStat = '<i class="fas fa-check-double" style="color:#00ff00;"></i>';
+                        else if(isSent) readStat = '<i class="fas fa-check"></i>';
+
+                        const div = document.createElement('div');
+                        div.className = `message ${isSent ? 'msg-sent' : 'msg-recv'}`;
+                        div.innerHTML = `<div>${msg.text}</div><div class="msg-meta">${formatTime(msg.timestamp)}${edited} ${readStat}</div>`;
+                        
+                        // Long press logic
+                        div.onmousedown = div.ontouchstart = (e) => {
+                            longPressTimer = setTimeout(() => openMenu(mid, msg, e), 1000);
+                        };
+                        div.onmouseup = div.ontouchend = div.onmousemove = div.ontouchmove = () => clearTimeout(longPressTimer);
+
+                        area.appendChild(div);
+                    });
+                    setTimeout(() => area.scrollTop = area.scrollHeight, 100);
+                    updateReadReceipt();
+                }
+            });
+        };
+
+        const updateReadReceipt = () => {
+            if(!activeChatId || !activeFriendId) return;
+            get(ref(db, `chats/${activeChatId}/messages`)).then(snap => {
+                if(snap.exists()) {
+                    let updates = {};
+                    snap.forEach(c => {
+                        let m = c.val();
+                        if(m.sender !== currentUser.uid && !m.readBy) {
+                            updates[`${c.key}/readBy`] = serverTimestamp();
+                        }
+                    });
+                    if(Object.keys(updates).length > 0) update(ref(db, `chats/${activeChatId}/messages`), updates);
+                }
+            });
+        };
+
+        const listenGlobalUnread = () => {
+            // Listen across all chats
+            onValue(ref(db, 'chats'), snap => {
+                let unreadCount = 0; unreadSender = null; let senderName = '';
+                if(snap.exists()) {
+                    snap.forEach(chatNode => {
+                        if(chatNode.key.includes(currentUser.uid)) {
+                            const msgs = chatNode.child('messages');
+                            msgs.forEach(m => {
+                                let val = m.val();
+                                if(val.sender !== currentUser.uid && !val.readBy && val.deletedFor !== 'everyone') {
+                                    unreadCount++;
+                                    unreadSender = val.sender;
+                                }
+                            });
+                        }
+                    });
+                }
+                const hb = $('home-badge');
+                if(unreadCount > 0 && unreadSender && unreadSender !== activeFriendId) {
+                    senderName = usersData[unreadSender] ? usersData[unreadSender].name : 'Someone';
+                    hb.innerText = `${senderName}: ${unreadCount} new`;
+                    hb.style.display = 'block';
+                } else { hb.style.display = 'none'; }
+            });
+        };
+
+        window.sendMessage = async () => {
+            const inp = $('msg-input'); const text = inp.value.trim();
+            if(!text) return;
+            
+            if(editMsgId) {
+                await update(ref(db, `chats/${activeChatId}/messages/${editMsgId}`), { text, edited: true });
+                editMsgId = null;
+            } else {
+                await push(ref(db, `chats/${activeChatId}/messages`), {
+                    sender: currentUser.uid, text, timestamp: serverTimestamp(), deletedFor: null
+                });
+            }
+            inp.value = '';
+            set(ref(db, `chats/${activeChatId}/typing/${currentUser.uid}`), false);
+        };
+
+        window.handleTyping = () => {
+            if(!activeChatId) return;
+            set(ref(db, `chats/${activeChatId}/typing/${currentUser.uid}`), true);
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                set(ref(db, `chats/${activeChatId}/typing/${currentUser.uid}`), false);
+            }, 2000);
+        };
+
+        const listenTyping = () => {
+            onValue(ref(db, `chats/${activeChatId}/typing/${activeFriendId}`), snap => updateChatStatus());
+        };
+
+        // Long Press Menu Logic
+        window.openMenu = (mid, msg, e) => {
+            if(e) e.preventDefault();
+            navigator.vibrate && navigator.vibrate(50);
+            targetMsgNode = mid; targetMsgData = msg;
+            $('overlay').style.display = 'block';
+            $('msg-menu').style.display = 'block';
+            
+            let rt = $('menu-read-time');
+            if(msg.sender === currentUser.uid && msg.readBy) rt.innerText = `Read at: ${formatDate(msg.readBy)}`;
+            else rt.innerText = '';
+        };
+
+        window.closeMenu = () => { $('overlay').style.display = 'none'; $('msg-menu').style.display = 'none'; };
+
+        window.actionCopy = () => { navigator.clipboard.writeText(targetMsgData.text); showToast("Copied"); closeMenu(); };
+        window.actionEdit = () => { 
+            if(targetMsgData.sender !== currentUser.uid) return showToast("Can't edit others message");
+            $('msg-input').value = targetMsgData.text; 
+            editMsgId = targetMsgNode; 
+            closeMenu(); 
+        };
+        window.actionDelete = async () => {
+            const now = Date.now();
+            const msgTime = targetMsgData.timestamp || now;
+            const diffMin = (now - msgTime) / (1000 * 60);
+            
+            if(targetMsgData.sender === currentUser.uid && diffMin <= 15) {
+                await update(ref(db, `chats/${activeChatId}/messages/${targetMsgNode}`), { deletedFor: 'everyone', text: '' });
+                showToast("Deleted for everyone");
+            } else {
+                await update(ref(db, `chats/${activeChatId}/messages/${targetMsgNode}`), { deletedFor: currentUser.uid });
+                showToast("Deleted for you");
+            }
+            closeMenu();
+        };
+
+        // WebRTC Call System
+        const initPeerConnection = () => {
+            peerConnection = new RTCPeerConnection(servers);
+            
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+            
+            peerConnection.ontrack = event => {
+                const rv = $('remote-video');
+                if(!rv.srcObject) { rv.srcObject = event.streams[0]; }
+            };
+            
+            peerConnection.onicecandidate = event => {
+                if(event.candidate && activeCallRef) {
+                    push(ref(db, `calls/${activeFriendId}/candidates`), event.candidate.toJSON());
+                }
+            };
+        };
+
+        const setupMedia = async (video) => {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: video, audio: true });
+                $('local-video').srcObject = localStream;
+                return true;
+            } catch(e) { showToast("Camera/Mic access denied"); return false; }
+        };
+
+        window.startCall = async (type) => {
+            callType = type;
+            const ok = await setupMedia(type === 'video');
+            if(!ok) return;
+
+            initPeerConnection();
+            
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+
+            activeCallRef = `calls/${activeFriendId}`;
+            await set(ref(db, activeCallRef), {
+                callerId: currentUser.uid, type: type, status: 'calling',
+                offer: { type: offer.type, sdp: offer.sdp }, timestamp: serverTimestamp()
+            });
+
+            showCallUI(true, true);
+        };
+
+        const listenCalls = () => {
+            onValue(ref(db, `calls/${currentUser.uid}`), async snap => {
+                if(snap.exists()) {
+                    const data = snap.val();
+                    activeFriendId = data.callerId;
+                    callType = data.type;
+                    
+                    if(data.status === 'calling' && !inCall) {
+                        playRingtone();
+                        $('call-user-name').innerText = `Incoming ${callType} call from ${usersData[data.callerId]?.name || 'Someone'}`;
+                        showCallUI(false, false);
+                    } else if(data.status === 'answered' && inCall) {
+                        if(data.answer && peerConnection.signalingState !== 'stable') {
+                            const rtcDesc = new RTCSessionDescription(data.answer);
+                            await peerConnection.setRemoteDescription(rtcDesc);
+                            startTimer();
+                        }
+                    } else if(data.status === 'ended') {
+                        cleanupCall();
+                    }
+                    
+                    // Listen to candidates
+                    if(data.candidates && peerConnection && peerConnection.remoteDescription) {
+                        for(let key in data.candidates) {
+                            try { await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidates[key])); } catch(e){}
+                        }
+                    }
+                }
+            });
+        };
+
+        window.acceptCall = async () => {
+            stopRingtone();
+            const ok = await setupMedia(callType === 'video');
+            if(!ok) return declineCall();
+            
+            initPeerConnection();
+            
+            const snap = await get(ref(db, `calls/${currentUser.uid}`));
+            const data = snap.val();
+            
+            const rtcDesc = new RTCSessionDescription(data.offer);
+            await peerConnection.setRemoteDescription(rtcDesc);
+            
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            
+            await update(ref(db, `calls/${currentUser.uid}`), {
+                status: 'answered', answer: { type: answer.type, sdp: answer.sdp }
+            });
+            
+            showCallUI(true, false);
+            startTimer();
+        };
+
+        window.declineCall = async () => {
+            stopRingtone();
+            await update(ref(db, `calls/${currentUser.uid}`), { status: 'ended' });
+            cleanupCall();
+        };
+
+        window.endCall = async () => {
+            if(activeFriendId) {
+                // If I am caller, delete friend's node, else delete my node
+                const targetRef = ref(db, `calls/${activeFriendId}`);
+                const myRef = ref(db, `calls/${currentUser.uid}`);
+                
+                await update(targetRef, { status: 'ended' });
+                await update(myRef, { status: 'ended' });
+                
+                // Save history
+                if(callSeconds > 0) {
+                    await push(ref(db, `call_history/${currentUser.uid}`), {
+                        peerId: activeFriendId, type: callType, duration: callSeconds, timestamp: serverTimestamp()
+                    });
+                }
+            }
+            cleanupCall();
+        };
+
+        const cleanupCall = () => {
+            inCall = false; stopRingtone(); clearInterval(callInterval); callSeconds = 0;
+            if(localStream) localStream.getTracks().forEach(t => t.stop());
+            if(peerConnection) peerConnection.close();
+            peerConnection = null; localStream = null; activeCallRef = null;
+            $('call-screen').style.display = 'none';
+            $('remote-video').srcObject = null; $('local-video').srcObject = null;
+            remove(ref(db, `calls/${currentUser.uid}`));
+        };
+
+        const showCallUI = (isActive, isCaller) => {
+            inCall = true;
+            $('call-screen').style.display = 'flex';
+            $('video-container').style.display = callType === 'video' ? 'block' : 'none';
+            $('incoming-controls').style.display = isActive ? 'none' : 'flex';
+            $('active-controls').style.display = isActive ? 'flex' : 'none';
+            if(callType === 'video' && isActive) $('btn-cam').style.display = 'flex';
+            else $('btn-cam').style.display = 'none';
+            if(isCaller) $('call-user-name').innerText = `Calling ${usersData[activeFriendId]?.name || ''}...`;
+        };
+
+        const startTimer = () => {
+            $('call-user-name').innerText = usersData[activeFriendId]?.name || 'In Call';
+            clearInterval(callInterval);
+            callInterval = setInterval(() => {
+                callSeconds++;
+                const m = Math.floor(callSeconds / 60).toString().padStart(2, '0');
+                const s = (callSeconds % 60).toString().padStart(2, '0');
+                $('call-timer').innerText = `${m}:${s}`;
+            }, 1000);
+        };
+
+        window.toggleMic = () => {
+            if(localStream) {
+                const track = localStream.getAudioTracks()[0];
+                track.enabled = !track.enabled;
+                $('btn-mic').classList.toggle('off');
+            }
+        };
+        window.toggleCam = () => {
+            if(localStream && callType === 'video') {
+                const track = localStream.getVideoTracks()[0];
+                track.enabled = !track.enabled;
+                $('btn-cam').classList.toggle('off');
+            }
+        };
+
+        // Call History
+        const listenHistory = () => {
+            onValue(ref(db, `call_history/${currentUser.uid}`), snap => {
+                const list = $('call-history-list'); list.innerHTML = '';
+                if(snap.exists()) {
+                    let arr = [];
+                    snap.forEach(c => arr.push(c.val()));
+                    arr.reverse().forEach(h => {
+                        const pname = usersData[h.peerId]?.name || 'Unknown';
+                        const m = Math.floor(h.duration / 60); const s = h.duration % 60;
+                        list.innerHTML += `<div class="history-item">
+                            <i class="fas fa-${h.type==='video'?'video':'phone'}" style="color:var(--accent-color)"></i> 
+                            ${pname} - ${m}m ${s}s <span style="float:right;color:#888;">${formatDate(h.timestamp)}</span>
+                        </div>`;
+                    });
+                } else { list.innerHTML = "<p style='color:#888; font-size:12px;'>No call history.</p>"; }
+            });
+        };
+        window.clearHistory = async () => {
+            await remove(ref(db, `call_history/${currentUser.uid}`));
+            showToast("History Cleared");
+        };
+
+    </script>
+</body>
+</html>
