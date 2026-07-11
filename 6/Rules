@@ -1,0 +1,46 @@
+{
+  "rules": {
+    "users": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "friends": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null"
+      }
+    },
+    "notifications": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null"
+      }
+    },
+    "chats": {
+      "$chatId": {
+        ".read": "auth != null && ($chatId.contains(auth.uid))",
+        ".write": "auth != null && ($chatId.contains(auth.uid))"
+      }
+    },
+    "typing": {
+      "$chatId": {
+        ".read": "auth != null && ($chatId.contains(auth.uid))",
+        ".write": "auth != null && ($chatId.contains(auth.uid))"
+      }
+    },
+    "calls": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid)",
+        ".write": "auth != null"
+      }
+    },
+    "callHistory": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    }
+  }
+}
